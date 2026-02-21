@@ -14,55 +14,38 @@ using namespace std;
 int main(){
     string path = "../DB/test_db";
 
-    {
-        cout << " TEST 1: Basic Insertion \n";
-        DiskFile DF(path.c_str()); // Creates new file
-        
-        string k1 = "a", v1 = "Alice";
-        string k2 = "c", v2 = "Charlie";
-        string k3 = "b", v3 = "Bob";
+    DiskFile DF(path.c_str());
 
-        cout << "Inserting a, c, b\n";
-        DF.insert(k1, v1);
-        DF.insert(k2, v2);
-        DF.insert(k3, v3);
+    while(true){
+        string choice;
+        cin>>choice;
 
-        DF.printTree();
-    }
+        if(choice == "GET"){
+            string key,val; 
+            cin >> key;
+            bool status = DF.get(key,val);
+            // cout<<"[DEBUG]"<<status<<endl;
+            if(!status){
+                cout<<"\tKey not found!\n";
+                continue;
+            }else{
+                cout<<"\t"<<key<<" : "<<val<<endl;
+            }
+            continue;
+        }
 
-    // return 0;
+        if(choice == "SET"){
+            string key,val;
+            cin>>key>>val;
 
-    {
-        cout << "\n TEST 2: Leaf Split (Overflow) \n";
-        DiskFile DF(path.c_str()); 
+            DF.set(key,val);
+        }
 
-        for (int i = 10; i < 25; i++) {
-            string key;
-            key.push_back('a' + i);
-            string val = "data";
-            DF.insert(key, val);
-
-            cout<<"\tinserted : "<<key<<" "<<val<<endl;
+        if(choice == "PRINT"){
             DF.printTree();
-            cout<<endl;
         }
 
-        DF.printTree();
     }
-    return 0;
-    {
-        cout << "\n TEST 3: Stress Test (Root Split) \n";
-        DiskFile DF(path.c_str());
-
-        cout << "Inserting 100 keys\n";
-        for (int i = 100; i < 200; i++) {
-            string key = "key:" + to_string(i);
-            string val = "val";
-            DF.insert(key, val);
-        }
-
-        DF.printTree();
-    }
-
+    
     return 0;
 }

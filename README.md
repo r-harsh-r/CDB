@@ -91,5 +91,5 @@ int main() {
 ## Roadmap
 
 - [x] SET - insert(key,value)
-- [ ] Recursive GET (Retrieval)
+- [x] Recursive GET (Retrieval)
 - [ ] Delete operations

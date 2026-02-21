@@ -1,3 +1,12 @@
+// -----------------------------------------------------------------------------------------
+    // | type | nkeys |  pointers  |  offsets   | key-values | unused |
+    // |  2B  |   2B  | (nkeys + 1) × 8B | nkeys × 2B |     ...    |        |
+
+    // | type | nkeys | pointers | offsets |            key-values           | unused |
+    // |   2  |   2   | nil nil  |  8 19   | 2 2 "k1" "hi"  2 5 "k3" "hello" |        |
+    // |  2B  |  2B   |   2×8B   |  2×2B   | 4B + 2B + 2B + 4B + 2B + 5B     |        |
+
+
 #pragma once
 
 #include<iostream>
@@ -35,6 +44,7 @@ private :
     int fd = -1;
     const char* filename;
 
+    // Header Content : Stored in page 0
     int32_t page_size,
             next_free_page,
             total_page_alloted,
@@ -80,8 +90,7 @@ public:
         }
     }
 
-
-// private:
+    // update the Header page with current values
     void updateHeader(){
         lseek(fd,0,SEEK_SET);
         write(fd,&page_size,sizeof(page_size));
@@ -94,11 +103,7 @@ public:
 
     }
 
-    // void updateNextFreePage(int32_t nex){
-    //     lseek(fd,4,SEEK_SET);
-    //     write(fd,&nex,sizeof(nex));
-    // }
-    
+    // Read the page number, and store it in buffer, return true if read successfully
     bool readPage(uint32_t pageNum,void*buff){
         off_t offset = lseek(fd,pageNum*PAGE_SIZE,SEEK_SET);
         if(offset == -1){
@@ -108,6 +113,7 @@ public:
         return n == PAGE_SIZE;
     }
     
+    // Write at pagenum, content of buff
     bool writePage(uint32_t pageNum,const void*buff){
         off_t offset = lseek(fd,pageNum*PAGE_SIZE,SEEK_SET);
         if(offset == -1){
@@ -125,11 +131,13 @@ public:
     }
 
 
+    // return a free page number : either from free list or newly created page
     uint32_t allocatePage(){
         int32_t nextFreePage;
         lseek(fd,4,SEEK_SET);
         read(fd,&nextFreePage,sizeof(nextFreePage));
         
+        // next page available
         if(nextFreePage != 0){
             uint32_t page = nextFreePage;
             lseek(fd,nextFreePage*PAGE_SIZE,SEEK_SET);
@@ -137,13 +145,12 @@ public:
             int32_t next;
             read(fd,&next,sizeof(next));
 
-            // updateNextFreePage(next);
             next_free_page = next;
             updateHeader();
 
             return page;
         }else{
-            uint32_t newPage = appendPage();
+            uint32_t newPage = appendPage();    // appendPage() adds a new page in the book
             if(newPage == 0) newPage = 1;
 
             total_page_alloted = newPage + 1;
@@ -152,6 +159,7 @@ public:
         }
     }
 
+    // Mark the pageNum as free and add it to free_page linked list
     void freePage(uint32_t pageNum){
         if(pageNum == 0) return;
         
@@ -166,6 +174,7 @@ public:
 
     }
 
+    // Adds a new page in the book
     uint32_t appendPage(){
 
         off_t size = lseek(fd,0,SEEK_END);
@@ -179,6 +188,7 @@ public:
         return newPage;
     }
 
+    // returns total number of pages Attached
     uint32_t getPageCount(){
         struct stat st;
         if (fstat(fd, &st) == -1) return 0;
@@ -186,22 +196,19 @@ public:
     }
 
 
-    // -----------------------------------------------------------------------------------------
-    // | type | nkeys |  pointers  |  offsets   | key-values | unused |
-    // |  2B  |   2B  | (nkeys + 1) × 8B | nkeys × 2B |     ...    |        |
-
-    // | type | nkeys | pointers | offsets |            key-values           | unused |
-    // |   2  |   2   | nil nil  |  8 19   | 2 2 "k1" "hi"  2 5 "k3" "hello" |        |
-    // |  2B  |  2B   |   2×8B   |  2×2B   | 4B + 2B + 2B + 4B + 2B + 5B     |        |
+    // input : a free page number, type of node it is, number of keys in it, list of pointers, list of keys and list of values
+    // output : returns true if created successfully
     int createNode(uint32_t pageNum,int16_t type,int16_t nkeys,int64_t ptrs[],const char*keys[],const char*vals[]){
         lseek(fd,pageNum*PAGE_SIZE,SEEK_SET);
 
         write(fd,&type,sizeof type);
         write(fd,&nkeys,sizeof nkeys);
+
         for(int i = 0;i<=nkeys;i++){
             write(fd,&ptrs[i],sizeof(ptrs[i]));
         }
 
+        // offset calculation : see serialization schema
         int16_t offset = 0;
         for(int i = 0;i<nkeys;i++){
             offset += 4;
@@ -223,6 +230,7 @@ public:
         return 1;
     }
 
+    // return number of keys (nkeys) of a node stored at pageNum 
     uint16_t getnkeys(uint32_t pageNum){
         lseek(fd,pageNum*PAGE_SIZE + 2,SEEK_SET);
         uint16_t nkeys;
@@ -230,6 +238,7 @@ public:
         return nkeys;
     }
     
+    // return type of node at pagenum
     uint16_t getType(uint32_t pageNum){
         lseek(fd,pageNum*PAGE_SIZE,SEEK_SET);
         uint16_t type;
@@ -237,8 +246,19 @@ public:
         return type;
     }
 
+    // return root_page = page number of root of B+ tree
     uint32_t getRoot(){
         return root_page;
+    }
+
+    // returns the nth POINTER (is basycally page number)
+    // zero indexed
+    int64_t getnthPageNum(uint32_t pageNum,int n){
+        lseek(fd,pageNum*PAGE_SIZE + 4 + n*8,SEEK_SET);
+        int64_t nthPtr;
+        read(fd,&nthPtr,sizeof(nthPtr));
+
+        return nthPtr;
     }
 
     vector<int64_t> getPtrs(uint32_t pageNum){
@@ -297,6 +317,7 @@ public:
         val[vallen] = '\0';
     }
 
+    // CoW pattern : create a new node at newPageNum, dont alter the oldPageNum
     void insertKVatNode(uint32_t newPageNum, uint32_t oldPageNum,const char key[],const char val[]){
         uint16_t nkeys_old = getnkeys(oldPageNum);
         uint16_t type = getType(oldPageNum);
@@ -345,16 +366,17 @@ public:
 
         int64_t ptrs[1000] = {0};
         
+        // new node is created here : after inserting the new key and value 
         createNode(newPageNum,type,newnKeys,ptrs,keyPtrs,valPtrs);
         
         delete[] keyPtrs;
         delete[] valPtrs;
 
+        // old page is marked free
         freePage(oldPageNum);
     }
 
     // split the old node into 2 new node and split the middle key
-    // [implemented] : implement the distintion that if root then different and if internal then different
     SplitResult nodeSplit2(uint32_t oldPageNum){
         uint16_t numKeys = getnkeys(oldPageNum);
         uint16_t type = getType(oldPageNum);
@@ -365,6 +387,7 @@ public:
         vector<string> allKeys;
         vector<string> allVals;
         
+        // temperory buffer to read keys and values
         char tempKey[PAGE_SIZE];
         char tempVal[PAGE_SIZE];
 
@@ -374,12 +397,13 @@ public:
             allVals.push_back(string(tempVal));
         }
 
-        int leftSize = 2 + 2; // type + nkeys
-        leftSize += (splitPtr + 1) * 8; // pointers: 0 to splitPtr
-        leftSize += splitPtr * 2; // offsets
+        // increase the splitPtr till left size > PAGE_LIMIT
+        int leftSize = 2 + 2;                               // type + nkeys
+        leftSize += (splitPtr + 1) * 8;                     // pointers: 0 to splitPtr
+        leftSize += splitPtr * 2;                           // offsets
 
         for(int i = 0; i < splitPtr; i++){
-            leftSize += 4; // 2+2 for sizes
+            leftSize += 4;                                  // 2+2 for sizes
             leftSize += allKeys[i].length();
             leftSize += allVals[i].length();
         } 
@@ -387,8 +411,8 @@ public:
         while(leftSize > PAGE_LIMIT && splitPtr > 1){
             leftSize -= 4;
             leftSize -= (allKeys[splitPtr-1].length() + allVals[splitPtr-1].length()); 
-            leftSize -= 8; // pointer
-            leftSize -= 2; // offset
+            leftSize -= 8;                                  // pointer
+            leftSize -= 2;                                  // offset
             splitPtr--;
         }
 
@@ -408,7 +432,7 @@ public:
             leftPtrsVec.push_back(allPtrs[i]);
         }
 
-
+        // A key will be promoted only in LEAF node
         int startRight = (type == BNODE_NODE) ? splitPtr + 1 : splitPtr;
         
         for(int i = startRight; i < numKeys; i++){
@@ -447,7 +471,7 @@ public:
         delete[] rKeysArr; 
         delete[] rValsArr;
 
-        SplitResult ans;
+        SplitResult ans;            // ans is split result
         ans.leftPage = leftPage;
         ans.rightPage = rightPage;
         ans.promotedKey = promotedKey;
@@ -532,9 +556,9 @@ public:
 
         int u = 0;
 
-        // u = lower_bound() : implement later during optimization
+        // u = upper_bound() : implement later during optimization
         for(u;u<nkeys;u++){
-            if(keys[u] < key) continue;
+            if(keys[u] <= key) continue;
             else break;
         }
 
@@ -644,7 +668,120 @@ public:
         return res;
     }
 
+    
+    // binary search utility
+    bool lbcheck(uint32_t pageNum,string&key,int idx){
+        char key_idx[1000];
+        char val_idx[1000];
 
+        getnthKV(pageNum,idx,key_idx,val_idx);
+        
+        string key_idx_Str = string(key_idx);
+        
+        return key <= key_idx_Str;
+    }
+    
+    
+    bool ubcheck(uint32_t pageNum,string&key,int idx){
+        char key_idx[1000];
+        char val_idx[1000];
+
+        getnthKV(pageNum,idx,key_idx,val_idx);
+        
+        string key_idx_Str = string(key_idx);
+               
+        return key < key_idx_Str;
+    }
+
+    int lowerBound(uint32_t pageNum,string&key){
+        int nkeys = getnkeys(pageNum);
+        int lo = 0,hi = nkeys - 1;
+        int ans = hi + 1;
+
+        while(lo <= hi){
+            int mid = (lo + hi)/2;
+
+            if(lbcheck(pageNum,key,mid)){
+                ans = mid;
+                hi = mid - 1;
+            }else{
+                lo = mid + 1;
+            }
+        }
+        return ans;
+    }
+
+    int upperBound(uint32_t pageNum,string&key){
+        int nkeys = getnkeys(pageNum);
+        int lo = 0,hi = nkeys - 1;
+        int ans = hi + 1;
+
+        while(lo <= hi){
+            int mid = (lo + hi)/2;
+
+            if(ubcheck(pageNum,key,mid)){
+                ans = mid;
+                hi = mid - 1;
+            }else{
+                lo = mid + 1;
+            }
+        }
+        return ans;
+    }
+
+
+    bool recursiveGet(string&key,string&val_out,uint64_t pageNum){
+        uint16_t type = getType(pageNum);
+        uint16_t nkeys = getnkeys(pageNum);
+
+        if(type == BNODE_LEAF){
+            int lb_idx = lowerBound(pageNum,key);
+
+            if(lb_idx >= nkeys){
+                return false;
+            }
+
+            char key_idx[1000];
+            char val_idx[1000];
+    
+            getnthKV(pageNum,lb_idx,key_idx,val_idx);
+
+            string ansVal = string(val_idx);
+            string ansKey = string(key_idx);
+            
+            // cout << "[DEBUG] Compare:" << endl;
+            // cout << "  Input Key: '" << key << "' (Len: " << key.length() << ")" << endl;
+            // cout << "  Read Key : '" << ansKey << "' (Len: " << ansKey.length() << ")" << endl;
+            // cout<<"[DEBUG]"<<lb_idx<<" : "<<ansKey<<" "<<key<<" "<<ansVal<<" status : "<<(key == ansKey)<<endl;
+            
+
+            if(ansKey == key){
+                val_out = ansVal;
+                return true;
+            }
+
+            return false;
+        }
+
+        int lb_idx = upperBound(pageNum,key);
+        int64_t childPage = getnthPageNum(pageNum, lb_idx);
+        if (childPage <= 0 || childPage >= getPageCount()) {
+            return false;  // Invalid child pointer
+        }
+        return recursiveGet(key, val_out, childPage);
+    }
+
+    bool get(string&key,string&val_out){
+        // cout<<"root : "<<getRoot()<<endl;
+        if(getRoot() == 0){
+            return false;
+        }
+        return recursiveGet(key,val_out,getRoot());
+    }
+
+    void set(string&key,string&val){
+        insert(key,val);
+    }
 
     void printTree() {
         if (getRoot() == 0) {
