@@ -1,4 +1,4 @@
 [done] SET - set(key,value)
 [done] Recursive GET - bool get(key,val)
+[done] - fsync
 [] Delete (hard? maybe)
-[] - fsync

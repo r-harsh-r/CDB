@@ -1,5 +1,14 @@
 #include "./ds.h"
 
+void DiskFile::syncToDisk(){
+    if(fd >= 0){
+        if(fsync(fd) == -1){
+            perror("fsync failed");
+            abort();
+        }
+    }
+}
+
 DiskFile::DiskFile(const char*filename_) : filename(filename_){
     fd = open(filename,O_RDWR|O_CREAT,0644);
     if(fd < 0){
@@ -695,6 +704,7 @@ bool DiskFile::get(std::string&key,std::string&val_out){
 
 void DiskFile::set(std::string&key,std::string&val){
     insert(key,val);
+    syncToDisk();
 }
 
 void DiskFile::printTree() {

@@ -55,6 +55,9 @@ public:
 
     ~DiskFile();
 
+    // fsync to disk
+    void syncToDisk();
+
     // update the Header page with current values
     void updateHeader();
 
