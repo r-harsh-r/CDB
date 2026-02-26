@@ -5,5 +5,4 @@
 /src/a.out
 CDB
 ds.o
-ds/ds.cpp
 main.o
