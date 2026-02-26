@@ -60,14 +60,7 @@ public:
     void updateHeader();
 
     // Read the page number, and store it in buffer, return true if read successfully
-    bool readPage(uint32_t pageNum,void*buff){
-        off_t offset = lseek(fd,pageNum*PAGE_SIZE,SEEK_SET);
-        if(offset == -1){
-            return false;
-        }
-        ssize_t n = read(fd,buff,PAGE_SIZE);
-        return n == PAGE_SIZE;
-    }
+    bool readPage(uint32_t pageNum,void*buff);
     
     // Write at pagenum, content of buff
     bool writePage(uint32_t pageNum,const void*buff){
