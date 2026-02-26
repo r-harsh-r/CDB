@@ -1,0 +1,5 @@
+To fix the CoW semantics ; 
+1) update the root, we will get the splitresult
+2) go to the parent of this, copy the parent to a new location, now update this copy, and goto its parent with the split result
+3) after copying and updating the current parent if its a root, then change the root pointer to this new root, and mark all the child of prev root as garbage
+4) if its not a root, then go to its parent and repeat the process
