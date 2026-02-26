@@ -38,3 +38,13 @@ DiskFile :: ~DiskFile(){
     }
 }
 
+void DiskFile ::updateHeader(){
+    lseek(fd,0,SEEK_SET);
+    write(fd,&page_size,sizeof(page_size));
+    
+    write(fd,&next_free_page,sizeof next_free_page);
+    
+    write(fd,&total_page_alloted,sizeof(total_page_alloted));
+    
+    write(fd,&root_page,sizeof(root_page));
+}

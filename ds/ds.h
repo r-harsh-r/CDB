@@ -57,17 +57,7 @@ public:
     ~DiskFile();
 
     // update the Header page with current values
-    void updateHeader(){
-        lseek(fd,0,SEEK_SET);
-        write(fd,&page_size,sizeof(page_size));
-        
-        write(fd,&next_free_page,sizeof next_free_page);
-        
-        write(fd,&total_page_alloted,sizeof(total_page_alloted));
-        
-        write(fd,&root_page,sizeof(root_page));
-
-    }
+    void updateHeader();
 
     // Read the page number, and store it in buffer, return true if read successfully
     bool readPage(uint32_t pageNum,void*buff){
