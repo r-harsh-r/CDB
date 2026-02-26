@@ -18,7 +18,6 @@
 #include<cstdint>
 #include<sys/stat.h>
 #include<vector>
-using namespace std;
 
 #define BNODE_NODE  1
 #define BNODE_LEAF 2
@@ -26,7 +25,7 @@ using namespace std;
 const int PAGE_SIZE = 4096;
 const int PAGE_LIMIT = 2048;
 
-const int MAX_NKEYS = 10;
+const int MAX_NKEYS = 100;
 
 struct SplitResult{
     uint32_t leftPage,rightPage;
@@ -96,9 +95,9 @@ public:
     // zero indexed
     int64_t getnthPageNum(uint32_t pageNum,int n);
 
-    vector<int64_t> getPtrs(uint32_t pageNum);
+    std::vector<int64_t> getPtrs(uint32_t pageNum);
 
-    vector<string> getKeys(uint32_t pageNum);
+    std::vector<std::string> getKeys(uint32_t pageNum);
 
     // GET nTH KEY (0 INDEXED)
     void getnthKV(uint32_t pageNum,int n,char key[],char val[]);
@@ -109,27 +108,27 @@ public:
     // split the old node into 2 new node and split the middle key
     SplitResult nodeSplit2(uint32_t oldPageNum);
 
-    void insert(string&key,string&val);
+    void insert(std::string&key,std::string&val);
 
-    NodeSplitResult recursiveInsert(uint32_t pageNum,string&key,string&val);
+    NodeSplitResult recursiveInsert(uint32_t pageNum,std::string&key,std::string&val);
 
     
     // binary search utility
-    bool lbcheck(uint32_t pageNum,string&key,int idx);
+    bool lbcheck(uint32_t pageNum,std::string&key,int idx);
     
     
-    bool ubcheck(uint32_t pageNum,string&key,int idx);
+    bool ubcheck(uint32_t pageNum,std::string&key,int idx);
 
-    int lowerBound(uint32_t pageNum,string&key);
+    int lowerBound(uint32_t pageNum,std::string&key);
 
-    int upperBound(uint32_t pageNum,string&key);
+    int upperBound(uint32_t pageNum,std::string&key);
 
 
-    bool recursiveGet(string&key,string&val_out,uint64_t pageNum);
+    bool recursiveGet(std::string&key,std::string&val_out,uint64_t pageNum);
 
-    bool get(string&key,string&val_out);
+    bool get(std::string&key,std::string&val_out);
 
-    void set(string&key,string&val);
+    void set(std::string&key,std::string&val);
 
     void printTree();
 

@@ -192,8 +192,8 @@ int64_t DiskFile::getnthPageNum(uint32_t pageNum,int n){
     return nthPtr;
 }
 
-vector<int64_t> DiskFile::getPtrs(uint32_t pageNum){
-    vector<int64_t> ptrVec;
+std::vector<int64_t> DiskFile::getPtrs(uint32_t pageNum){
+    std::vector<int64_t> ptrVec;
     uint16_t numKeys = getnkeys(pageNum);
 
     lseek(fd,pageNum*PAGE_SIZE + 4,SEEK_SET);
@@ -207,8 +207,8 @@ vector<int64_t> DiskFile::getPtrs(uint32_t pageNum){
     return ptrVec;
 }
 
-vector<string> DiskFile::getKeys(uint32_t pageNum){
-    vector<string>keyVec;
+std::vector<std::string> DiskFile::getKeys(uint32_t pageNum){
+    std::vector<std::string>keyVec;
     uint16_t numKeys = getnkeys(pageNum);
 
     char key[1000];
@@ -216,7 +216,7 @@ vector<string> DiskFile::getKeys(uint32_t pageNum){
 
     for(int i = 0;i<numKeys;i++){
         getnthKV(pageNum,i,key,val);
-        keyVec.push_back(string(key));
+        keyVec.push_back(std::string(key));
     }
 
     return keyVec;
@@ -251,15 +251,15 @@ void DiskFile::insertKVatNode(uint32_t newPageNum, uint32_t oldPageNum,const cha
     uint16_t nkeys_old = getnkeys(oldPageNum);
     uint16_t type = getType(oldPageNum);
 
-    vector<string> keysVec;
-    vector<string> valsVec;
+    std::vector<std::string> keysVec;
+    std::vector<std::string> valsVec;
     char tempKey[PAGE_SIZE]; // Temporary buffer for reading
     char tempVal[PAGE_SIZE];
 
     for(int i = 0;i<nkeys_old;i++){
         getnthKV(oldPageNum,i,tempKey,tempVal);
-        keysVec.push_back(string(tempKey));
-        valsVec.push_back(string(tempVal));
+        keysVec.push_back(std::string(tempKey));
+        valsVec.push_back(std::string(tempVal));
     }
 
     bool replace = false;
@@ -269,8 +269,8 @@ void DiskFile::insertKVatNode(uint32_t newPageNum, uint32_t oldPageNum,const cha
         if(valc > 0) continue;
         if(valc == 0){
             replace = true;
-            keysVec[idx] = string(key);
-            valsVec[idx] = string(val);
+            keysVec[idx] = std::string(key);
+            valsVec[idx] = std::string(val);
             break;
         }
         if(valc < 0){
@@ -280,8 +280,8 @@ void DiskFile::insertKVatNode(uint32_t newPageNum, uint32_t oldPageNum,const cha
     
     if(!replace){
         // Insert at the correct position
-        keysVec.insert(keysVec.begin() + idx, string(key));
-        valsVec.insert(valsVec.begin() + idx, string(val));
+        keysVec.insert(keysVec.begin() + idx, std::string(key));
+        valsVec.insert(valsVec.begin() + idx, std::string(val));
     }
 
     uint16_t newnKeys = keysVec.size();
@@ -308,12 +308,12 @@ void DiskFile::insertKVatNode(uint32_t newPageNum, uint32_t oldPageNum,const cha
 SplitResult DiskFile::nodeSplit2(uint32_t oldPageNum){
     uint16_t numKeys = getnkeys(oldPageNum);
     uint16_t type = getType(oldPageNum);
-    vector<int64_t> allPtrs = getPtrs(oldPageNum);
+    std::vector<int64_t> allPtrs = getPtrs(oldPageNum);
 
     int splitPtr = numKeys / 2;
 
-    vector<string> allKeys;
-    vector<string> allVals;
+    std::vector<std::string> allKeys;
+    std::vector<std::string> allVals;
     
     // temperory buffer to read keys and values
     char tempKey[PAGE_SIZE];
@@ -321,8 +321,8 @@ SplitResult DiskFile::nodeSplit2(uint32_t oldPageNum){
 
     for(int i = 0; i < numKeys; i++){
         getnthKV(oldPageNum, i, tempKey, tempVal);
-        allKeys.push_back(string(tempKey));
-        allVals.push_back(string(tempVal));
+        allKeys.push_back(std::string(tempKey));
+        allVals.push_back(std::string(tempVal));
     }
 
     // increase the splitPtr till left size > PAGE_LIMIT
@@ -344,11 +344,11 @@ SplitResult DiskFile::nodeSplit2(uint32_t oldPageNum){
         splitPtr--;
     }
 
-    string promotedKey = allKeys[splitPtr];
+    std::string promotedKey = allKeys[splitPtr];
 
-    vector<string> leftKeysVec, leftValsVec;
-    vector<string> rightKeysVec, rightValsVec;
-    vector<int64_t> leftPtrsVec, rightPtrsVec;
+    std::vector<std::string> leftKeysVec, leftValsVec;
+    std::vector<std::string> rightKeysVec, rightValsVec;
+    std::vector<int64_t> leftPtrsVec, rightPtrsVec;
 
     // Keys/Vals: [0 .. splitPtr-1]
     for(int i = 0; i < splitPtr; i++){
@@ -409,11 +409,11 @@ SplitResult DiskFile::nodeSplit2(uint32_t oldPageNum){
     return ans;
 }
 
-void DiskFile::insert(string&key,string&val){
+void DiskFile::insert(std::string&key,std::string&val){
     if(getRoot() == 0){
-        cout<<"Creating root for the first time"<<endl;
+        std::cout<<"Creating root for the first time"<<std::endl;
         root_page = allocatePage();
-        cout<<"\troot_page : "<<root_page<<endl;
+        std::cout<<"\troot_page : "<<root_page<<std::endl;
         int16_t type = BNODE_LEAF;
         int16_t nkeys = 1;
         int64_t ptrs[] = {0,0};
@@ -448,7 +448,7 @@ void DiskFile::insert(string&key,string&val){
     updateHeader();
 }
 
-NodeSplitResult DiskFile::recursiveInsert(uint32_t pageNum,string&key,string&val){
+NodeSplitResult DiskFile::recursiveInsert(uint32_t pageNum,std::string&key,std::string&val){
     uint16_t type = getType(pageNum);
     uint16_t nkeys = getnkeys(pageNum);
 
@@ -476,15 +476,15 @@ NodeSplitResult DiskFile::recursiveInsert(uint32_t pageNum,string&key,string&val
         }
     }
 
-    vector<string>keys = getKeys(pageNum);
-    vector<int64_t>ptrs = getPtrs(pageNum);
+    std::vector<std::string>keys = getKeys(pageNum);
+    std::vector<int64_t>ptrs = getPtrs(pageNum);
 
     freePage(pageNum);
 
-    int u = 0;
-
+    
+    int u;
     // u = upper_bound() : implement later during optimization
-    for(u;u<nkeys;u++){
+    for(u = 0;u<nkeys;u++){
         if(keys[u] <= key) continue;
         else break;
     }
@@ -506,12 +506,12 @@ NodeSplitResult DiskFile::recursiveInsert(uint32_t pageNum,string&key,string&val
         const char** keysRaw = new const char*[keys.size()];
         const char** valsRaw = new const char*[keys.size()];
 
-        for(int i = 0;i<ptrs.size();i++){
+        for(int i = 0;i<(int)ptrs.size();i++){
             ptrRawArr[i] = ptrs[i];
         }
 
-        string emp = "";
-        for(int i = 0;i<keys.size();i++){
+        std::string emp = "";
+        for(int i = 0;i<(int)keys.size();i++){
             keysRaw[i] = keys[i].c_str();
             valsRaw[i] = emp.c_str();
         }
@@ -530,16 +530,16 @@ NodeSplitResult DiskFile::recursiveInsert(uint32_t pageNum,string&key,string&val
     }
 
     // got a promoted key from child
-    string promotedKey = res_from_child.promotedKey;
+    std::string promotedKey = res_from_child.promotedKey;
 
-    vector<string>newKeys;
-    vector<int64_t> newPtr;
+    std::vector<std::string>newKeys;
+    std::vector<int64_t> newPtr;
 
     for(int i = 0;i<u;i++){
         newKeys.push_back(keys[i]);
     }
     newKeys.push_back(promotedKey);
-    for(int i = u;i<keys.size();i++){
+    for(int i = u;i<(int)keys.size();i++){
         newKeys.push_back(keys[i]);
     }
 
@@ -548,7 +548,7 @@ NodeSplitResult DiskFile::recursiveInsert(uint32_t pageNum,string&key,string&val
     }
     newPtr.push_back(res_from_child.leftPage);
     newPtr.push_back(res_from_child.rightPage);
-    for(int i = u + 1;i<ptrs.size();i++){
+    for(int i = u + 1;i<(int)ptrs.size();i++){
         newPtr.push_back(ptrs[i]);
     }
     
@@ -558,14 +558,12 @@ NodeSplitResult DiskFile::recursiveInsert(uint32_t pageNum,string&key,string&val
     const char** keysRaw = new const char*[newKeys.size()];
     const char** valsRaw = new const char*[newKeys.size()];
 
-    for(int i = 0;i<newPtr.size();i++){
+    for(int i = 0;i<(int)newPtr.size();i++){
         ptrRawArr[i] = newPtr[i];
     }
 
-    string emp = "";
-    for(int i = 0;i<newKeys.size();i++){
-        // strcpy(keysRaw[i],newKeys[i].c_str());
-        // strcpy(valsRaw[i],emp.c_str());
+    std::string emp = "";
+    for(int i = 0;i<(int)newKeys.size();i++){
         keysRaw[i] = newKeys[i].c_str();
         valsRaw[i] = emp.c_str();
     }
@@ -585,7 +583,6 @@ NodeSplitResult DiskFile::recursiveInsert(uint32_t pageNum,string&key,string&val
     }
 
     // splitting
-
     SplitResult splitRes = nodeSplit2(newPage);
     res.leftPage = splitRes.leftPage;
     res.rightPage = splitRes.rightPage;
@@ -595,29 +592,29 @@ NodeSplitResult DiskFile::recursiveInsert(uint32_t pageNum,string&key,string&val
     return res;
 }
 
-bool DiskFile::lbcheck(uint32_t pageNum,string&key,int idx){
-    char key_idx[1000];
-    char val_idx[1000];
+bool DiskFile::lbcheck(uint32_t pageNum,std::string&key,int idx){
+    char keyIdx[1000];
+    char valIdx[1000];
 
-    getnthKV(pageNum,idx,key_idx,val_idx);
+    getnthKV(pageNum,idx,keyIdx,valIdx);
     
-    string key_idx_Str = string(key_idx);
+    std::string key_idx_Str = std::string(keyIdx);
     
     return key <= key_idx_Str;
 }
 
-bool DiskFile::ubcheck(uint32_t pageNum,string&key,int idx){
-    char key_idx[1000];
-    char val_idx[1000];
+bool DiskFile::ubcheck(uint32_t pageNum,std::string&key,int idx){
+    char keyIdx[1000];
+    char valIdx[1000];
 
-    getnthKV(pageNum,idx,key_idx,val_idx);
+    getnthKV(pageNum,idx,keyIdx,valIdx);
     
-    string key_idx_Str = string(key_idx);
+    std::string key_idx_Str = std::string(keyIdx);
             
     return key < key_idx_Str;
 }
 
-int DiskFile::lowerBound(uint32_t pageNum,string&key){
+int DiskFile::lowerBound(uint32_t pageNum,std::string&key){
     int nkeys = getnkeys(pageNum);
     int lo = 0,hi = nkeys - 1;
     int ans = hi + 1;
@@ -635,7 +632,7 @@ int DiskFile::lowerBound(uint32_t pageNum,string&key){
     return ans;
 }
 
-int DiskFile::upperBound(uint32_t pageNum,string&key){
+int DiskFile::upperBound(uint32_t pageNum,std::string&key){
     int nkeys = getnkeys(pageNum);
     int lo = 0,hi = nkeys - 1;
     int ans = hi + 1;
@@ -653,7 +650,7 @@ int DiskFile::upperBound(uint32_t pageNum,string&key){
     return ans;
 }
 
-bool DiskFile::recursiveGet(string&key,string&val_out,uint64_t pageNum){
+bool DiskFile::recursiveGet(std::string&key,std::string&val_out,uint64_t pageNum){
     uint16_t type = getType(pageNum);
     uint16_t nkeys = getnkeys(pageNum);
 
@@ -664,20 +661,15 @@ bool DiskFile::recursiveGet(string&key,string&val_out,uint64_t pageNum){
             return false;
         }
 
-        char key_idx[1000];
-        char val_idx[1000];
+        char keyIdx[1000];
+        char valIdx[1000];
 
-        getnthKV(pageNum,lb_idx,key_idx,val_idx);
+        getnthKV(pageNum,lb_idx,keyIdx,valIdx);
 
-        string ansVal = string(val_idx);
-        string ansKey = string(key_idx);
+        std::string ansVal = std::string(valIdx);
+        std::string ansKey = std::string(keyIdx);
         
-        // cout << "[DEBUG] Compare:" << endl;
-        // cout << "  Input Key: '" << key << "' (Len: " << key.length() << ")" << endl;
-        // cout << "  Read Key : '" << ansKey << "' (Len: " << ansKey.length() << ")" << endl;
-        // cout<<"[DEBUG]"<<lb_idx<<" : "<<ansKey<<" "<<key<<" "<<ansVal<<" status : "<<(key == ansKey)<<endl;
         
-
         if(ansKey == key){
             val_out = ansVal;
             return true;
@@ -694,47 +686,46 @@ bool DiskFile::recursiveGet(string&key,string&val_out,uint64_t pageNum){
     return recursiveGet(key, val_out, childPage);
 }
 
-bool DiskFile::get(string&key,string&val_out){
-    // cout<<"root : "<<getRoot()<<endl;
+bool DiskFile::get(std::string&key,std::string&val_out){
     if(getRoot() == 0){
         return false;
     }
     return recursiveGet(key,val_out,getRoot());
 }
 
-void DiskFile::set(string&key,string&val){
+void DiskFile::set(std::string&key,std::string&val){
     insert(key,val);
 }
 
 void DiskFile::printTree() {
     if (getRoot() == 0) {
-        cout << "Empty Tree\n";
+        std::cout << "Empty Tree\n";
         return;
     }
-    cout << "--- B+ TREE STRUCTURE (Root: " << getRoot() << ") ---\n";
+    std::cout << "--- B+ TREE STRUCTURE (Root: " << getRoot() << ") ---\n";
     printRecursive(getRoot(), 0);
-    cout << "-------------------------------------------\n";
+    std::cout << "-------------------------------------------\n";
 }
 
 void DiskFile::printRecursive(uint32_t pageNum, int depth) {
     uint16_t type = getType(pageNum);
     uint16_t nkeys = getnkeys(pageNum);
-    string indent(depth * 4, ' ');
+    std::string indent(depth * 4, ' ');
 
     if (type == BNODE_LEAF) {
-        cout << indent << "[LEAF Page " << pageNum << "] Keys: ";
+        std::cout << indent << "[LEAF Page " << pageNum << "] Keys: ";
         char k[1000], v[1000];
         for (int i = 0; i < nkeys; i++) {
             getnthKV(pageNum, i, k, v);
-            cout << "\"" << k << "\" ";
+            std::cout << "\"" << k << "\" ";
         }
-        cout << endl;
+        std::cout << std::endl;
     } 
     else {
         // Internal Node
-        cout << indent << "[NODE Page " << pageNum << "]\n";
-        vector<string> keys = getKeys(pageNum);
-        vector<int64_t> ptrs = getPtrs(pageNum);
+        std::cout << indent << "[NODE Page " << pageNum << "]\n";
+        std::vector<std::string> keys = getKeys(pageNum);
+        std::vector<int64_t> ptrs = getPtrs(pageNum);
 
         // Internal Node Format: Ptr0, Key0, Ptr1, Key1 ... PtrN
         for (int i = 0; i < nkeys; i++) {
@@ -742,7 +733,7 @@ void DiskFile::printRecursive(uint32_t pageNum, int depth) {
             printRecursive(ptrs[i], depth + 1);
             
             // Print Key i (The Separator)
-            cout << indent << "  KEY: \"" << keys[i] << "\"\n";
+            std::cout << indent << "  KEY: \"" << keys[i] << "\"\n";
         }
         // Print Last Child
         printRecursive(ptrs[nkeys], depth + 1);
