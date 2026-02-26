@@ -12,7 +12,7 @@
 using namespace std;
 
 int main(){
-    string path = "../DB/test_db";
+    string path = "./DB/test_db";
 
     DiskFile DF(path.c_str());
 

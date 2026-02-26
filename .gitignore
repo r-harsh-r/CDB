@@ -3,3 +3,7 @@
 /src/benchmark
 /DB/benchmark.db
 /src/a.out
+CDB
+ds.o
+ds/ds.cpp
+main.o
