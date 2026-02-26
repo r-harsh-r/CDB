@@ -8,4 +8,4 @@ ds.o
 main.o
 test_ds
 test_ds.o
-./tests/test_ds.cpp
+tests/test_ds.cpp
