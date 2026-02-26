@@ -48,3 +48,12 @@ void DiskFile ::updateHeader(){
     
     write(fd,&root_page,sizeof(root_page));
 }
+
+bool DiskFile :: readPage(uint32_t pageNum,void*buff){
+    off_t offset = lseek(fd,pageNum*PAGE_SIZE,SEEK_SET);
+    if(offset == -1){
+        return false;
+    }
+    ssize_t n = read(fd,buff,PAGE_SIZE);
+    return n == PAGE_SIZE;
+}
