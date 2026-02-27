@@ -48,14 +48,11 @@ DiskFile :: ~DiskFile(){
 }
 
 void DiskFile ::updateHeader(){
+    int32_t headerBuffer[4] = {page_size,next_free_page,total_page_alloted,root_page};
+
     lseek(fd,0,SEEK_SET);
-    write(fd,&page_size,sizeof(page_size));
-    
-    write(fd,&next_free_page,sizeof next_free_page);
-    
-    write(fd,&total_page_alloted,sizeof(total_page_alloted));
-    
-    write(fd,&root_page,sizeof(root_page));
+
+    write(fd,&headerBuffer,sizeof(headerBuffer));
 }
 
 bool DiskFile :: readPage(uint32_t pageNum,void*buff){
