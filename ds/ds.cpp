@@ -311,7 +311,8 @@ void DiskFile::insertKVatNode(uint32_t newPageNum, uint32_t oldPageNum,const cha
     delete[] valPtrs;
 
     // old page is marked free
-    freePage(oldPageNum);
+    // freePage(oldPageNum);
+    toBeFreeQueue.push(oldPageNum);
 }
 
 SplitResult DiskFile::nodeSplit2(uint32_t oldPageNum){
@@ -413,7 +414,8 @@ SplitResult DiskFile::nodeSplit2(uint32_t oldPageNum){
     ans.rightPage = rightPage;
     ans.promotedKey = promotedKey;
 
-    freePage(oldPageNum);
+    // freePage(oldPageNum);
+    toBeFreeQueue.push(oldPageNum);
 
     return ans;
 }
@@ -437,23 +439,40 @@ void DiskFile::insert(std::string&key,std::string&val){
     
     NodeSplitResult res = recursiveInsert(getRoot(),key,val);
     
-    root_page = res.nodeCurrPageNum;
+    // Store the new root in temp variable - avoid data corruption in case of crash
+    uint32_t newRootPage = res.nodeCurrPageNum;
     
+    // A promoted key - means a newroot has to be formed
     if(!res.promotedKey.empty()){
         // new root creation
-        root_page = allocatePage();
+        newRootPage = allocatePage();
         int16_t type = BNODE_NODE;
         int16_t nkeys = 1;
         int64_t ptrs[] = {res.leftPage,res.rightPage};
         const char*keys[] = {res.promotedKey.c_str()};
         const char* vals[] = {""};
 
-        createNode(root_page,type,nkeys,ptrs,keys,vals);
-        
-        updateHeader();
-        return;
+        createNode(newRootPage,type,nkeys,ptrs,keys,vals);
     }
+    
+    // Finally change the root here - this will change the tree - replacing the old tree with new
+    root_page = newRootPage;
+    updateHeader();
+    syncToDisk();
 
+    freePageQueueEmpty();
+
+}
+
+void DiskFile :: freePageQueueEmpty(){
+
+    if(toBeFreeQueue.empty()) return;
+
+    while(!toBeFreeQueue.empty()){
+        int page = toBeFreeQueue.front();
+        toBeFreeQueue.pop();
+        freePage(page);
+    }
     updateHeader();
 }
 
@@ -488,7 +507,9 @@ NodeSplitResult DiskFile::recursiveInsert(uint32_t pageNum,std::string&key,std::
     std::vector<std::string>keys = getKeys(pageNum);
     std::vector<int64_t>ptrs = getPtrs(pageNum);
 
-    freePage(pageNum);
+    // dont free the page
+    // freePage(pageNum);
+    toBeFreeQueue.push(pageNum);
 
     
     int u;
@@ -501,11 +522,11 @@ NodeSplitResult DiskFile::recursiveInsert(uint32_t pageNum,std::string&key,std::
 
     uint32_t nextPage = ptrs[u];
 
-    NodeSplitResult res_from_child = recursiveInsert(nextPage,key,val);
+    NodeSplitResult resFromChild = recursiveInsert(nextPage,key,val);
 
-    ptrs[u] = res_from_child.nodeCurrPageNum;
+    ptrs[u] = resFromChild.nodeCurrPageNum;
 
-    if(res_from_child.promotedKey.empty()){
+    if(resFromChild.promotedKey.empty()){
         // no promotion from child
         // update this node
         uint32_t newPage = allocatePage();
@@ -539,7 +560,7 @@ NodeSplitResult DiskFile::recursiveInsert(uint32_t pageNum,std::string&key,std::
     }
 
     // got a promoted key from child
-    std::string promotedKey = res_from_child.promotedKey;
+    std::string promotedKey = resFromChild.promotedKey;
 
     std::vector<std::string>newKeys;
     std::vector<int64_t> newPtr;
@@ -555,8 +576,8 @@ NodeSplitResult DiskFile::recursiveInsert(uint32_t pageNum,std::string&key,std::
     for(int i = 0;i<u;i++){
         newPtr.push_back(ptrs[i]);
     }
-    newPtr.push_back(res_from_child.leftPage);
-    newPtr.push_back(res_from_child.rightPage);
+    newPtr.push_back(resFromChild.leftPage);
+    newPtr.push_back(resFromChild.rightPage);
     for(int i = u + 1;i<(int)ptrs.size();i++){
         newPtr.push_back(ptrs[i]);
     }

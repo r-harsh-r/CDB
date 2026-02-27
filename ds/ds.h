@@ -18,6 +18,7 @@
 #include<cstdint>
 #include<sys/stat.h>
 #include<vector>
+#include<queue>
 
 #define BNODE_NODE  1
 #define BNODE_LEAF 2
@@ -48,6 +49,8 @@ private :
             next_free_page,
             total_page_alloted,
             root_page;
+    
+    std::queue<int> toBeFreeQueue;
 
     
 public:
@@ -57,6 +60,9 @@ public:
 
     // fsync to disk
     void syncToDisk();
+
+    // free page list
+    void freePageQueueEmpty();
 
     // update the Header page with current values
     void updateHeader();
