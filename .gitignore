@@ -2,6 +2,7 @@
 /src/stressTestModule.cpp
 /src/benchmark
 /DB/benchmark.db
+/DB/test_db
 /src/a.out
 CDB
 ds.o
