@@ -80,6 +80,7 @@ bool DiskFile :: writePage(uint32_t pageNum,const void*buff){
     lseek(fd,8,SEEK_SET);
     write(fd,&total_page_alloted,sizeof(total_page_alloted));
 
+    syncToDisk();
 
     return n == PAGE_SIZE;
 }
@@ -172,6 +173,7 @@ int DiskFile::createNode(uint32_t pageNum,int16_t type,int16_t nkeys,int64_t ptr
         write(fd,keys[i],keySize);
         write(fd,vals[i],valSize);
     }
+
     return 1;
 }
 
@@ -432,8 +434,9 @@ void DiskFile::insert(std::string&key,std::string&val){
         const char* vals[] = {val.c_str()};
 
         createNode(root_page,type,nkeys,ptrs,keys,vals);
-        
+        syncToDisk(); 
         updateHeader();
+        syncToDisk(); 
         return;
     }
     
@@ -457,8 +460,9 @@ void DiskFile::insert(std::string&key,std::string&val){
     
     // Finally change the root here - this will change the tree - replacing the old tree with new
     root_page = newRootPage;
+    syncToDisk();           // this flushes all the nodes created into disk, before changin the header root info
     updateHeader();
-    syncToDisk();
+    syncToDisk();           // flushes the root info
 
     freePageQueueEmpty();
 
