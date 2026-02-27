@@ -142,13 +142,18 @@ uint32_t DiskFile::getPageCount(){
 }
 
 int DiskFile::createNode(uint32_t pageNum,int16_t type,int16_t nkeys,int64_t ptrs[],const char*keys[],const char*vals[]){
-    lseek(fd,pageNum*PAGE_SIZE,SEEK_SET);
-
-    write(fd,&type,sizeof type);
-    write(fd,&nkeys,sizeof nkeys);
-
+    char buff[PAGE_SIZE] = {0};
+    int buffOffset = 0;
+    
+    memcpy(buff + buffOffset,&type,sizeof(type));
+    buffOffset += sizeof(type);
+    
+    memcpy(buff + buffOffset,&nkeys,sizeof(nkeys));
+    buffOffset += sizeof(nkeys);
+    
     for(int i = 0;i<=nkeys;i++){
-        write(fd,&ptrs[i],sizeof(ptrs[i]));
+        memcpy(buff + buffOffset,&ptrs[i],sizeof(ptrs[i]));
+        buffOffset += sizeof(ptrs[i]);
     }
 
     // offset calculation : see serialization schema
@@ -158,21 +163,33 @@ int DiskFile::createNode(uint32_t pageNum,int16_t type,int16_t nkeys,int64_t ptr
         offset += strlen(keys[i]);
         offset += strlen(vals[i]);
 
-        write(fd,&offset,sizeof(offset));
+        memcpy(buff + buffOffset,&offset,sizeof(offset));
+        buffOffset += sizeof(offset);
     }
-
+    
     for(int i = 0;i<nkeys;i++){
         int16_t keySize = strlen(keys[i]);
         int16_t valSize = strlen(vals[i]);
-
-        write(fd,&keySize,sizeof(keySize));
-        write(fd,&valSize,sizeof(valSize));
-        write(fd,keys[i],keySize);
-        write(fd,vals[i],valSize);
+        
+        memcpy(buff + buffOffset,&keySize,sizeof(keySize));
+        buffOffset += sizeof(keySize);
+        
+        memcpy(buff + buffOffset,&valSize,sizeof(valSize));
+        buffOffset += sizeof(valSize);
+        
+        memcpy(buff + buffOffset,keys[i],keySize);
+        buffOffset += keySize;
+        
+        memcpy(buff + buffOffset,vals[i],valSize);
+        buffOffset += valSize;
+        
     }
+
+    writePage(pageNum,buff);
 
     return 1;
 }
+
 
 uint16_t DiskFile::getnkeys(uint32_t pageNum){
     lseek(fd,pageNum*PAGE_SIZE + 2,SEEK_SET);
