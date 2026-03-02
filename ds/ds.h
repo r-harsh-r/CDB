@@ -26,7 +26,7 @@
 const int PAGE_SIZE = 4096;
 const int PAGE_LIMIT = 2048;
 
-const int MAX_NKEYS = 100;
+const int MAX_NKEYS = 10;
 
 struct SplitResult{
     uint32_t leftPage,rightPage;
